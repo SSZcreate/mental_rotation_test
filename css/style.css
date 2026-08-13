@@ -728,28 +728,53 @@ body {
   background: rgba(239, 68, 68, 0.02);
 }
 
-/* Subtle CSV Viewer Entry Button */
-.viewer-entry-wrap {
-  margin-top: 4px;
+/* Subtle CSV Viewer Entry Button (Outside the Card) */
+.viewer-outside-wrap {
+  margin-top: 14px;
+  text-align: center;
+  width: 100%;
 }
 
-.viewer-subtle-btn {
+.viewer-subtle-outside-btn {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: #64748b;
-  font-size: 0.8rem;
-  text-decoration: underline;
+  font-family: var(--font-primary);
+  font-size: 0.78rem;
+  font-weight: 500;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  opacity: 0.7;
+  padding: 6px 14px;
+  border-radius: 20px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.75;
 }
 
-.viewer-subtle-btn:hover {
+.viewer-subtle-outside-btn .btn-icon {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  transition: all 0.25s ease;
+}
+
+/* ホバー時の見た目変化（枠線・背景・カラー・アイコンの微小アニメーション） */
+.viewer-subtle-outside-btn:hover {
   color: var(--primary);
   opacity: 1;
-  background: rgba(56, 189, 248, 0.05);
+  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+.viewer-subtle-outside-btn:hover .btn-icon {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.viewer-subtle-outside-btn:active {
+  transform: translateY(0);
 }
 
 /* Modal Backdrop & Dialog */

@@ -71,18 +71,18 @@ const welcomeScreen = {
           </ul>
         </div>
 
-        <div class="mrt-footer" style="margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 18px;">
+        <div class="mrt-footer" style="margin-top: 30px;">
           <button id="btn-start-practice" class="btn-action" onclick="handleStartExperiment()">
             練習を開始する
           </button>
-          
-          <!-- 目立たないCSV結果読み込みリンク -->
-          <div class="viewer-entry-wrap">
-            <button type="button" class="viewer-subtle-btn" onclick="openCsvViewerModal()">
-              📁 保存済みデータ (CSV) を読み込んで結果を確認
-            </button>
-          </div>
         </div>
+      </div>
+
+      <!-- 枠外の目立たないCSV確認リンク（ホバー時に変化） -->
+      <div class="viewer-outside-wrap">
+        <button type="button" class="viewer-subtle-outside-btn" onclick="openCsvViewerModal()">
+          <span class="btn-icon">📁</span> 保存済みデータ (CSV) を読み込む
+        </button>
       </div>
 
       <!-- CSVデータ読み込み用モーダルダイアログ -->
