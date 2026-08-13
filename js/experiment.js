@@ -176,7 +176,7 @@ MRT_ITEMS.practice.forEach((item) => {
     preamble: item.preamble,
     target: item.target,
     choices: item.choices,
-    is_practice: false,
+    is_practice: true,
     button_label: "次へ"
   });
 });
@@ -328,6 +328,8 @@ function renderResultsDashboard(data) {
     `;
   });
 
+  const isConfiguredGoogleForm = MRT_CONFIG.googleFormUrl && !MRT_CONFIG.googleFormUrl.includes('YOUR_FORM_ID') && !MRT_CONFIG.googleFormUrl.includes('あなたのフォームID');
+
   document.body.innerHTML = `
     <div class="results-card">
       <div class="results-header">
@@ -372,11 +374,14 @@ function renderResultsDashboard(data) {
         <button id="btn-download-csv" class="btn-secondary">
           💾 CSV保存 (バックアップ)
         </button>
-        ${data.isViewerMode ? `
-          <button type="button" class="btn-secondary" onclick="location.reload()">
-            ← スタート画面に戻る
-          </button>
+        ${!data.isViewerMode && isConfiguredGoogleForm ? `
+          <a href="${MRT_CONFIG.googleFormUrl}" target="_blank" rel="noopener noreferrer" class="btn-action" style="background: #10b981; border-color: #10b981; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+            📝 Google フォームを開く
+          </a>
         ` : ""}
+        <button type="button" class="btn-secondary" onclick="location.href = location.pathname">
+          ${data.isViewerMode ? "← スタート画面に戻る" : "🔄 もう一度受ける"}
+        </button>
       </div>
 
       <!-- 問題ごとの正誤一覧（下部） -->
@@ -435,7 +440,7 @@ function renderResultsDashboard(data) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `mrt_result_${data.participantId}_${Date.now()}.csv`);
+    link.setAttribute("download", `mrt_result_${data.participantId || 'unknown'}_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -526,7 +531,7 @@ window.processAndRenderCsv = function() {
   }
 
   try {
-    // 参加者IDの抽出（ヘッダー行にある場合）
+    // 参加者IDの抽出（ヘッダー情報またはCSV先頭行にある場合）
     let pid = 'IMPORTED_DATA';
     const idMatch = rawText.match(/Participant_ID:\s*([^\r\n]+)/i);
     if (idMatch) pid = idMatch[1].trim();
@@ -534,17 +539,21 @@ window.processAndRenderCsv = function() {
     // CSV行の分解
     const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
     
-    // ヘッダー行（"trial_type" や "trial_id" を含む行）を探す
+    // ヘッダー行を探す（カンマ区切りのカラム名の中に trial_id や trial_type が含まれる行）
     let headerIndex = -1;
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes('trial_id') || lines[i].includes('trial_type') || lines[i].includes('rt')) {
-        headerIndex = i;
-        break;
+      const line = lines[i];
+      if (line.includes(',')) {
+        const parsedCols = parseCsvLine(line).map(c => c.toLowerCase().trim());
+        if (parsedCols.includes('trial_id') || parsedCols.includes('trial_type') || (parsedCols.includes('rt') && parsedCols.includes('selected_labels'))) {
+          headerIndex = i;
+          break;
+        }
       }
     }
 
     if (headerIndex === -1) {
-      throw new Error("有効なCSVヘッダー（trial_id, rt 等）が見つかりませんでした。");
+      throw new Error("有効なCSVヘッダー（trial_id, trial_type 等）が見つかりませんでした。");
     }
 
     const headers = parseCsvLine(lines[headerIndex]);
@@ -564,13 +573,13 @@ window.processAndRenderCsv = function() {
       if (cols.length < 2) continue;
 
       const trialId = trialIdIdx !== -1 ? cols[trialIdIdx] : '';
-      if (participantIdIdx !== -1 && cols[participantIdIdx] && pid === 'IMPORTED_DATA') {
+      if (participantIdIdx !== -1 && cols[participantIdIdx] && (pid === 'IMPORTED_DATA' || !pid)) {
         pid = cols[participantIdIdx];
       }
 
       // 本試行（item_ で始まるか、あるいは練習以外の試行）
       if (trialId.startsWith('item_') || (trialId && !trialId.startsWith('practice') && !trialId.startsWith('example') && trialId !== 'trial')) {
-        const isFull = isFullCorrectIdx !== -1 ? (cols[isFullCorrectIdx] === '1' || cols[isFullCorrectIdx] === 'true') : false;
+        const isFull = isFullCorrectIdx !== -1 ? (cols[isFullCorrectIdx] === '1' || cols[isFullCorrectIdx] === 'true' || cols[isFullCorrectIdx] === 1) : false;
         const rt = rtIdx !== -1 ? parseFloat(cols[rtIdx]) || 0 : 0;
         const selected = selectedLabelsIdx !== -1 ? cols[selectedLabelsIdx].replace(/;/g, ', ') : '-';
         const correct = correctLabelsIdx !== -1 ? cols[correctLabelsIdx].replace(/;/g, ', ') : '-';

@@ -121,7 +121,7 @@ const MRTRenderer = (function() {
 
   // Canvasに3Dブロック図形を描画する関数
   function drawFigure(canvas, modelSpec, options = {}) {
-    if (!canvas) return;
+    if (!canvas || !modelSpec) return;
     const ctx = canvas.getContext("2d");
     const width = canvas.width;
     const height = canvas.height;
@@ -554,9 +554,17 @@ const jsPsychMentalRotation = (function(jspsych) {
           }
 
           submitBtn.textContent = "次へ進む";
-          submitBtn.onclick = () => {
+          const advanceFeedback = () => {
+            window.removeEventListener("keydown", feedbackKeyHandler);
             this.jsPsych.finishTrial(trialData);
           };
+          const feedbackKeyHandler = (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              advanceFeedback();
+            }
+          };
+          window.addEventListener("keydown", feedbackKeyHandler);
+          submitBtn.onclick = advanceFeedback;
         } else {
           window.removeEventListener("keydown", keyHandler);
           this.jsPsych.finishTrial(trialData);
