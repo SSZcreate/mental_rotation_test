@@ -479,8 +479,11 @@ const jsPsychMentalRotation = (function(jspsych) {
       window.addEventListener("keydown", keyHandler);
 
       // 送信処理
+      let isSubmitted = false;
       submitBtn.addEventListener("click", () => {
         if (selectedChoices.size !== requiredCount) return;
+        if (isSubmitted) return;
+        isSubmitted = true;
 
         const endTime = performance.now();
         const rt = Math.round(endTime - startTime);

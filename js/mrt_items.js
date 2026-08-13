@@ -6,37 +6,7 @@
  */
 
 const MRT_ITEMS = {
-  // チュートリアル・教示用の例題
-  examples: [
-    {
-      id: "example_1",
-      title: "例題 1 (Example 1)",
-      preamble: "Select the two correct images.<br><small>例題 1: 基準図形と同じものを2つ選んでください</small>",
-      target: { model: "mrt_1", rot: [0, 0, 0], mirrored: false },
-      choices: [
-        { model: "mrt_1", rot: [0, 60, 0], mirrored: false, isCorrect: true, label: "A" },  // 正解 (Y軸回転)
-        { model: "mrt_1", rot: [0, 60, 0], mirrored: true,  isCorrect: false, label: "B" }, // 不正解 (鏡像)
-        { model: "mrt_1", rot: [0, 140, 30], mirrored: true, isCorrect: false, label: "C" },// 不正解 (鏡像)
-        { model: "mrt_1", rot: [0, 140, 30], mirrored: false, isCorrect: true, label: "D" } // 正解 (複合回転)
-      ],
-      explanation: "【解説】正解は <strong>A</strong> と <strong>D</strong> です。Aは基準図形をそのまま右に60度回転させたもの、Dは140度回転させたものです。BとCは裏返し（鏡像）になっているため、いくら回転させても基準図形と重ね合わせることはできません。"
-    },
-    {
-      id: "example_2",
-      title: "例題 2 (Example 2)",
-      preamble: "Select the two correct images.<br><small>例題 2: 基準図形と同じものを2つ選んでください</small>",
-      target: { model: "mrt_2", rot: [0, 0, 0], mirrored: false },
-      choices: [
-        { model: "mrt_2", rot: [45, 0, 45], mirrored: true,  isCorrect: false, label: "A" }, // 不正解 (鏡像)
-        { model: "mrt_2", rot: [0, 90, 0],  mirrored: false, isCorrect: true,  label: "B" }, // 正解
-        { model: "mrt_2", rot: [30, 120, 0], mirrored: false, isCorrect: true,  label: "C" }, // 正解
-        { model: "mrt_2", rot: [0, 180, 0], mirrored: true,  isCorrect: false, label: "D" }  // 不正解 (鏡像)
-      ],
-      explanation: "【解説】正解は <strong>B</strong> と <strong>C</strong> です。BとCは基準図形を空間内で回転させたものです。AとDは鏡像（左右反転）です。"
-    }
-  ],
-
-  // 練習試行 (Practice)
+  // 練習試行 (Practice: 2問)
   practice: [
     {
       id: "practice_1",
