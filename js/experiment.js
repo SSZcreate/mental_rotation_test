@@ -71,10 +71,57 @@ const welcomeScreen = {
           </ul>
         </div>
 
-        <div class="mrt-footer" style="margin-top: 30px;">
+        <div class="mrt-footer" style="margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 18px;">
           <button id="btn-start-practice" class="btn-action" onclick="handleStartExperiment()">
             練習を開始する
           </button>
+          
+          <!-- 目立たないCSV結果読み込みリンク -->
+          <div class="viewer-entry-wrap">
+            <button type="button" class="viewer-subtle-btn" onclick="openCsvViewerModal()">
+              📁 保存済みデータ (CSV) を読み込んで結果を確認
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CSVデータ読み込み用モーダルダイアログ -->
+      <div id="csv-viewer-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3 style="font-family: var(--font-heading); font-size: 1.3rem; color: var(--primary);">
+              📁 実験結果データ (CSV) の確認
+            </h3>
+            <button type="button" class="modal-close-btn" onclick="closeCsvViewerModal()">✕</button>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px; line-height: 1.5;">
+            Google フォームからコピーした結果テキスト、または保存した CSV ファイルを読み込んで結果画面を再現・表示します。
+          </p>
+
+          <div style="margin-bottom: 14px;">
+            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">
+              CSVテキストの貼り付け：
+            </label>
+            <textarea id="modal-csv-input" class="modal-textarea" placeholder="ここにCSVテキスト（またはGoogleフォームの回答）を貼り付けてください..."></textarea>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 18px;">
+            <div>
+              <label for="modal-file-input" class="btn-upload-label">
+                📂 CSVファイルを選択
+              </label>
+              <input type="file" id="modal-file-input" accept=".csv,text/csv,text/plain" style="display: none;" onchange="handleCsvFileSelected(event)">
+              <span id="modal-filename-display" style="font-size: 0.82rem; color: var(--text-muted); margin-left: 8px;"></span>
+            </div>
+            <div id="modal-error-msg" style="color: #f87171; font-size: 0.85rem; display: none; font-weight: 600;"></div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="btn-secondary" onclick="closeCsvViewerModal()">キャンセル</button>
+            <button type="button" class="btn-action" style="padding: 10px 24px; font-size: 0.95rem;" onclick="processAndRenderCsv()">
+              結果を表示する
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -216,88 +263,105 @@ jsPsych.run(timeline);
 
 
 // =========================================================================
-// 7. 結果画面 & Google フォーム連携
+// 7. 結果画面 & Google フォーム連携 & CSVビュアー
 // =========================================================================
 
+// 通常の実験終了時ハンドラー
 function renderResultsScreen() {
-  window.scrollTo(0, 0);
-  // 本試行（trial_id が item_ で始まるもの）のデータを抽出
   const allData = jsPsych.data.get();
   const testTrials = allData.filterCustom(trial => trial.trial_id && trial.trial_id.startsWith('item_'));
   
   const totalItems = testTrials.count();
   let fullCorrectCount = 0;
   let totalRT = 0;
+  const trialsList = [];
 
-  testTrials.values().forEach(t => {
-    if (t.is_full_correct === 1) {
-      fullCorrectCount++;
-    }
+  testTrials.values().forEach((t, idx) => {
+    const isCorrect = (t.is_full_correct === 1);
+    if (isCorrect) fullCorrectCount++;
     totalRT += (t.rt || 0);
+
+    trialsList.push({
+      itemNum: idx + 1,
+      trialId: t.trial_id,
+      selectedLabels: t.selected_labels ? t.selected_labels.replace(/;/g, ', ') : '-',
+      correctLabels: t.correct_labels ? t.correct_labels.replace(/;/g, ', ') : '-',
+      isCorrect: isCorrect,
+      rtSec: (t.rt ? (t.rt / 1000).toFixed(2) : '0.00') + 's'
+    });
   });
 
   const accuracyPct = totalItems > 0 ? Math.round((fullCorrectCount / totalItems) * 100) : 0;
   const avgRT = totalItems > 0 ? (totalRT / totalItems / 1000).toFixed(2) : 0;
-
-  // CSVデータの生成（参加者IDヘッダー付き）
   const rawCsv = allData.csv();
   const exportPayload = `Participant_ID: ${PARTICIPANT_ID}\nDate: ${new Date().toISOString()}\nAccuracy: ${accuracyPct}%\nAvg_RT_sec: ${avgRT}\n---\n${rawCsv}`;
 
-  // 各問題の正誤行 HTML を生成
+  renderResultsDashboard({
+    participantId: PARTICIPANT_ID,
+    totalItems: totalItems,
+    fullCorrectCount: fullCorrectCount,
+    accuracyPct: accuracyPct,
+    avgRT: avgRT,
+    exportPayload: exportPayload,
+    trialsList: trialsList,
+    isViewerMode: false
+  });
+}
+
+// 汎用結果画面レンダラー（実験終了後 ＆ 外部CSV読み込み時の両方で使用）
+function renderResultsDashboard(data) {
+  window.scrollTo(0, 0);
+
   let breakdownRowsHtml = '';
-  testTrials.values().forEach((t, idx) => {
-    const itemNum = idx + 1;
-    const isCorrect = (t.is_full_correct === 1);
-    const badgeClass = isCorrect ? 'badge-correct' : 'badge-incorrect';
-    const badgeText = isCorrect ? '⭕ 正解' : '❌ 不正解';
-    const yourChoices = t.selected_labels ? t.selected_labels.replace(/;/g, ', ') : '-';
-    const correctChoices = t.correct_labels ? t.correct_labels.replace(/;/g, ', ') : '-';
-    const rtSec = (t.rt ? (t.rt / 1000).toFixed(2) : '0.00') + 's';
+  data.trialsList.forEach(t => {
+    const badgeClass = t.isCorrect ? 'badge-correct' : 'badge-incorrect';
+    const badgeText = t.isCorrect ? '⭕ 正解' : '❌ 不正解';
 
     breakdownRowsHtml += `
-      <tr class="${isCorrect ? 'row-correct' : 'row-incorrect'}">
-        <td style="font-weight: 600;">第${itemNum}問</td>
-        <td><span class="choice-tag">${yourChoices}</span></td>
-        <td><span class="choice-tag correct-tag">${correctChoices}</span></td>
+      <tr class="${t.isCorrect ? 'row-correct' : 'row-incorrect'}">
+        <td style="font-weight: 600;">第${t.itemNum}問</td>
+        <td><span class="choice-tag">${t.selectedLabels}</span></td>
+        <td><span class="choice-tag correct-tag">${t.correctLabels}</span></td>
         <td><span class="result-badge ${badgeClass}">${badgeText}</span></td>
-        <td style="color: var(--text-muted); font-size: 0.9rem;">${rtSec}</td>
+        <td style="color: var(--text-muted); font-size: 0.9rem;">${t.rtSec}</td>
       </tr>
     `;
   });
 
-  // 結果画面のHTML描画
   document.body.innerHTML = `
     <div class="results-card">
       <div class="results-header">
-        <h2 class="results-title">🎉 実験終了</h2>
-        <p style="color: var(--text-muted);">Mental Rotations Test の全試行が完了しました。ご協力ありがとうございました。</p>
+        <h2 class="results-title">${data.isViewerMode ? "📁 結果データの確認" : "🎉 実験終了"}</h2>
+        <p style="color: var(--text-muted);">
+          ${data.isViewerMode ? "読み込んだCSVデータの結果サマリーと正誤一覧です。" : "Mental Rotations Test の全試行が完了しました。ご協力ありがとうございました。"}
+        </p>
       </div>
 
       <!-- スコアサマリー -->
       <div class="results-summary-grid">
         <div class="summary-stat-box">
-          <div class="stat-value">${fullCorrectCount} / ${totalItems}</div>
+          <div class="stat-value">${data.fullCorrectCount} / ${data.totalItems}</div>
           <div class="stat-label">正答数 (完全一致)</div>
         </div>
         <div class="summary-stat-box">
-          <div class="stat-value">${accuracyPct}%</div>
+          <div class="stat-value">${data.accuracyPct}%</div>
           <div class="stat-label">正答率</div>
         </div>
         <div class="summary-stat-box">
-          <div class="stat-value">${avgRT}s</div>
+          <div class="stat-value">${data.avgRT}s</div>
           <div class="stat-label">平均回答時間</div>
         </div>
       </div>
 
-      <!-- データコピー案内 -->
+      <!-- データエリア -->
       <div class="data-section">
-        <h4 style="color: var(--primary); margin-bottom: 8px; font-size: 1.1rem;">
-          📋 実験結果データ（Google フォーム送信欄）
+        <h4 style="color: var(--primary); margin-bottom: 8px; font-size: 1.05rem;">
+          📋 ${data.isViewerMode ? "読み込んだCSVデータ" : "実験結果データ（Google フォーム送信欄）"}
         </h4>
-        <p style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; margin-bottom: 12px;">
-          以下のボタンを押してデータをコピーし、<strong>Google フォームの回答欄に貼り付けて送信</strong>してください。
+        <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.5; margin-bottom: 10px;">
+          ${data.isViewerMode ? "読み込まれたCSVの生データです。" : "以下のボタンを押してデータをコピーし、<strong>Google フォームの回答欄に貼り付けて送信</strong>してください。"}
         </p>
-        <textarea id="mrt-data-export" class="data-textarea" readonly>${exportPayload}</textarea>
+        <textarea id="mrt-data-export" class="data-textarea" readonly>${data.exportPayload}</textarea>
       </div>
 
       <!-- アクションボタン群 -->
@@ -308,6 +372,11 @@ function renderResultsScreen() {
         <button id="btn-download-csv" class="btn-secondary">
           💾 CSV保存 (バックアップ)
         </button>
+        ${data.isViewerMode ? `
+          <button type="button" class="btn-secondary" onclick="location.reload()">
+            ← スタート画面に戻る
+          </button>
+        ` : ""}
       </div>
 
       <!-- 問題ごとの正誤一覧（下部） -->
@@ -317,7 +386,7 @@ function renderResultsScreen() {
             📊 問題ごとの正誤一覧
           </h4>
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 14px;">
-            各問題で選択した回答と正解の内訳です（全${totalItems}問）。
+            各問題で選択した回答と正解の内訳です（全${data.totalItems}問）。
           </p>
         </div>
         <div class="breakdown-table-wrapper">
@@ -354,7 +423,6 @@ function renderResultsScreen() {
       await navigator.clipboard.writeText(dataArea.value);
       showToast("✅ データをクリップボードにコピーしました！");
     } catch (err) {
-      // フォールバック
       document.execCommand("copy");
       showToast("✅ データをコピーしました！");
     }
@@ -363,14 +431,15 @@ function renderResultsScreen() {
   // CSVダウンロード処理
   const downloadBtn = document.getElementById("btn-download-csv");
   downloadBtn.addEventListener("click", () => {
-    const blob = new Blob([exportPayload], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([data.exportPayload], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `mrt_result_${PARTICIPANT_ID}_${Date.now()}.csv`);
+    link.setAttribute("download", `mrt_result_${data.participantId}_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     showToast("💾 CSVファイルを保存しました");
   });
 
@@ -382,3 +451,169 @@ function renderResultsScreen() {
     }, 2800);
   }
 }
+
+
+// =========================================================================
+// 8. CSV パーサー & モーダル制御ロジック
+// =========================================================================
+
+window.openCsvViewerModal = function() {
+  const modal = document.getElementById("csv-viewer-modal");
+  if (modal) {
+    modal.style.display = "flex";
+    const textarea = document.getElementById("modal-csv-input");
+    if (textarea) textarea.focus();
+  }
+};
+
+window.closeCsvViewerModal = function() {
+  const modal = document.getElementById("csv-viewer-modal");
+  if (modal) modal.style.display = "none";
+};
+
+window.handleCsvFileSelected = function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const nameDisplay = document.getElementById("modal-filename-display");
+  if (nameDisplay) nameDisplay.textContent = file.name;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const content = e.target.result;
+    const textarea = document.getElementById("modal-csv-input");
+    if (textarea) textarea.value = content;
+  };
+  reader.readAsText(file);
+};
+
+// CSV行のパース（クォート対応）
+function parseCsvLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result.map(s => s.trim().replace(/^"|"$/g, ''));
+}
+
+window.processAndRenderCsv = function() {
+  const textarea = document.getElementById("modal-csv-input");
+  const errorEl = document.getElementById("modal-error-msg");
+  const rawText = textarea ? textarea.value.trim() : '';
+
+  if (!rawText) {
+    if (errorEl) {
+      errorEl.textContent = "※ CSVテキストまたはファイルを入力してください";
+      errorEl.style.display = "block";
+    }
+    return;
+  }
+
+  try {
+    // 参加者IDの抽出（ヘッダー行にある場合）
+    let pid = 'IMPORTED_DATA';
+    const idMatch = rawText.match(/Participant_ID:\s*([^\r\n]+)/i);
+    if (idMatch) pid = idMatch[1].trim();
+
+    // CSV行の分解
+    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    
+    // ヘッダー行（"trial_type" や "trial_id" を含む行）を探す
+    let headerIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes('trial_id') || lines[i].includes('trial_type') || lines[i].includes('rt')) {
+        headerIndex = i;
+        break;
+      }
+    }
+
+    if (headerIndex === -1) {
+      throw new Error("有効なCSVヘッダー（trial_id, rt 等）が見つかりませんでした。");
+    }
+
+    const headers = parseCsvLine(lines[headerIndex]);
+    const trialIdIdx = headers.indexOf('trial_id');
+    const selectedLabelsIdx = headers.indexOf('selected_labels');
+    const correctLabelsIdx = headers.indexOf('correct_labels');
+    const isFullCorrectIdx = headers.indexOf('is_full_correct');
+    const rtIdx = headers.indexOf('rt');
+    const participantIdIdx = headers.indexOf('participant_id');
+
+    const trialsList = [];
+    let fullCorrectCount = 0;
+    let totalRT = 0;
+
+    for (let i = headerIndex + 1; i < lines.length; i++) {
+      const cols = parseCsvLine(lines[i]);
+      if (cols.length < 2) continue;
+
+      const trialId = trialIdIdx !== -1 ? cols[trialIdIdx] : '';
+      if (participantIdIdx !== -1 && cols[participantIdIdx] && pid === 'IMPORTED_DATA') {
+        pid = cols[participantIdIdx];
+      }
+
+      // 本試行（item_ で始まるか、あるいは練習以外の試行）
+      if (trialId.startsWith('item_') || (trialId && !trialId.startsWith('practice') && !trialId.startsWith('example') && trialId !== 'trial')) {
+        const isFull = isFullCorrectIdx !== -1 ? (cols[isFullCorrectIdx] === '1' || cols[isFullCorrectIdx] === 'true') : false;
+        const rt = rtIdx !== -1 ? parseFloat(cols[rtIdx]) || 0 : 0;
+        const selected = selectedLabelsIdx !== -1 ? cols[selectedLabelsIdx].replace(/;/g, ', ') : '-';
+        const correct = correctLabelsIdx !== -1 ? cols[correctLabelsIdx].replace(/;/g, ', ') : '-';
+
+        if (isFull) fullCorrectCount++;
+        totalRT += rt;
+
+        trialsList.push({
+          itemNum: trialsList.length + 1,
+          trialId: trialId,
+          selectedLabels: selected,
+          correctLabels: correct,
+          isCorrect: isFull,
+          rtSec: (rt / 1000).toFixed(2) + 's'
+        });
+      }
+    }
+
+    if (trialsList.length === 0) {
+      throw new Error("本番試行データ（item_01 など）が見つかりませんでした。");
+    }
+
+    const totalItems = trialsList.length;
+    const accuracyPct = Math.round((fullCorrectCount / totalItems) * 100);
+    const avgRT = (totalRT / totalItems / 1000).toFixed(2);
+
+    closeCsvViewerModal();
+
+    renderResultsDashboard({
+      participantId: pid,
+      totalItems: totalItems,
+      fullCorrectCount: fullCorrectCount,
+      accuracyPct: accuracyPct,
+      avgRT: avgRT,
+      exportPayload: rawText,
+      trialsList: trialsList,
+      isViewerMode: true
+    });
+
+  } catch (err) {
+    if (errorEl) {
+      errorEl.textContent = `❌ エラー: ${err.message}`;
+      errorEl.style.display = "block";
+    }
+  }
+};
