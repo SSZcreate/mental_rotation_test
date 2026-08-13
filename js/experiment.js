@@ -301,18 +301,13 @@ function renderResultsScreen() {
       </div>
 
       <!-- アクションボタン群 -->
-      <div class="button-group-row" style="margin-bottom: 36px;">
-        <button id="btn-copy-data" class="btn-action" style="font-size: 1.1rem; padding: 14px 36px;">
+      <div class="button-group-row">
+        <button id="btn-copy-data" class="btn-action" style="font-size: 1.05rem; padding: 12px 32px;">
           📋 データをコピーする
         </button>
         <button id="btn-download-csv" class="btn-secondary">
           💾 CSV保存 (バックアップ)
         </button>
-        ${MRT_CONFIG.googleFormUrl ? `
-          <a href="${MRT_CONFIG.googleFormUrl}" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-primary-glow">
-            🚀 Google フォームを開く ↗
-          </a>
-        ` : ""}
       </div>
 
       <!-- 問題ごとの正誤一覧（下部） -->
