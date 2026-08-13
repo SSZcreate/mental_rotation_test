@@ -53,9 +53,12 @@ const welcomeScreen = {
 
         <div class="guide-section">
           <h4>📋 テスト概要</h4>
-          <p>
+          <p style="margin-bottom: 8px;">
             本テストは、頭の中で立体図形を回転させて把握する<strong>「3次元空間構造理解能力」</strong>を測定する心理学テストです。
           </p>
+          <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; color: #38bdf8; font-weight: 600;">
+            ⏱️ 想定所要時間: 約 5〜10分
+          </div>
         </div>
 
         <div class="guide-section">

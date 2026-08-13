@@ -1,6 +1,7 @@
 # Mental Rotations Test (MRT) - 3次元空間構造理解課題
 
-Vandenberg & Kuse (1978) の古典的 Mental Rotations Test (MRT) および Peters et al. (1995) の再描画刺激プロトコルに基づいた、**GitHub Pages 公開用・Google フォーム連携対応の心理実験Webアプリケーション**です。
+Vandenberg & Kuse (1978) の古典的 Mental Rotations Test (MRT) および Peters et al. (1995) の再描画刺激プロトコルに基づいた、**GitHub Pages 公開用・Google フォーム連携対応の心理実験Webアプリケーション**です。  
+**想定所要時間**: 約 5〜10分（練習2問 ＋ 本番12問）
 
 ---
 
