@@ -110,8 +110,8 @@ timeline.push({
     <div class="mrt-guide-container" style="text-align: center; max-width: 600px;">
       <h3 class="mrt-guide-title" style="margin-bottom: 16px;">練習セッション</h3>
       <p style="font-size: 1.05rem; color: #cbd5e1; margin-bottom: 24px;">
-        これから <strong>2問の練習問題</strong> を行います。<br>
-        回答後に正誤のフィードバックが表示されます。
+        これから操作に慣れていただくための <strong>2問の練習問題</strong> を行います。<br>
+        準備ができたら下のボタンを押して開始してください。
       </p>
       <button class="btn-action" onclick="jsPsych.finishTrial()">練習を開始する</button>
     </div>
@@ -127,8 +127,8 @@ MRT_ITEMS.practice.forEach((item) => {
     preamble: item.preamble,
     target: item.target,
     choices: item.choices,
-    is_practice: true,
-    button_label: "回答する"
+    is_practice: false,
+    button_label: "次へ"
   });
 });
 
@@ -141,7 +141,6 @@ timeline.push({
       <p style="font-size: 1.05rem; color: #cbd5e1; line-height: 1.8; margin-bottom: 20px;">
         練習は以上です。<br>
         ここからは全 <strong>${MRT_ITEMS.test.length} 問</strong> の本番問題に回答していただきます。<br>
-        本番では正誤のフィードバックは表示されません。<br>
         できるだけ正確に、かつ速やかに回答してください。
       </p>
       <button class="btn-action" onclick="jsPsych.finishTrial()">本番テストを開始する</button>
@@ -172,7 +171,7 @@ jsPsych.run(timeline);
 // =========================================================================
 
 function renderResultsScreen() {
-  // 本試行（is_practice: false かつ trial_id が item_ で始まるもの）のデータを抽出
+  // 本試行（trial_id が item_ で始まるもの）のデータを抽出
   const allData = jsPsych.data.get();
   const testTrials = allData.filterCustom(trial => trial.trial_id && trial.trial_id.startsWith('item_'));
   
@@ -194,7 +193,7 @@ function renderResultsScreen() {
   const rawCsv = allData.csv();
   const exportPayload = `Participant_ID: ${PARTICIPANT_ID}\nDate: ${new Date().toISOString()}\nAccuracy: ${accuracyPct}%\nAvg_RT_sec: ${avgRT}\n---\n${rawCsv}`;
 
-  // 結果画面のHTML描画
+  // 結果画面のHTML描画（参加者へスコアのフィードバックは出さず、完了確認とデータコピーに集中）
   document.body.innerHTML = `
     <div class="results-card">
       <div class="results-header">
@@ -202,19 +201,15 @@ function renderResultsScreen() {
         <p style="color: var(--text-muted);">Mental Rotations Test の全試行が完了しました。ご協力ありがとうございました。</p>
       </div>
 
-      <!-- スコアサマリー -->
-      <div class="results-summary-grid">
+      <!-- 完了ステータス -->
+      <div class="results-summary-grid" style="grid-template-columns: repeat(2, 1fr);">
         <div class="summary-stat-box">
-          <div class="stat-value">${fullCorrectCount} / ${totalItems}</div>
-          <div class="stat-label">正答数 (完全一致)</div>
+          <div class="stat-value">${PARTICIPANT_ID}</div>
+          <div class="stat-label">参加者ID</div>
         </div>
         <div class="summary-stat-box">
-          <div class="stat-value">${accuracyPct}%</div>
-          <div class="stat-label">正答率</div>
-        </div>
-        <div class="summary-stat-box">
-          <div class="stat-value">${avgRT}s</div>
-          <div class="stat-label">平均回答時間</div>
+          <div class="stat-value">${totalItems} / ${totalItems}</div>
+          <div class="stat-label">完了した問題数</div>
         </div>
       </div>
 
